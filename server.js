@@ -20,7 +20,8 @@ app.get('/', (req, res) => {
 
 // create API route
 app.get('/location', handleLocation);
-// app.get('/weather', handleWeather);
+app.get('/weather', handleWeather);
+app.use('*', notFoundHandler);
 
 // generate construction function for helper functions - location
 function Location (city, geoData) {
@@ -44,13 +45,31 @@ function handleLocation(req, res) {
 }
 
 // generate construction function for helper functions - weather
-function Weather (city, geoData) {
-  this.search_query = city;
-  this.formatted_query = geoData[0].display_name;
-  this.latitude = geoData[0].lat;
-  this.longitude = geoData[0].lon;
+function Weather (entry) {
+  this.description = entry.data.description;
+  this.datetime = entry.data.datetime
 }
 
+function handleWeather(req, res) {
+  try {
+    const skyData = require('./weather.json');
+    const weatherData = [];
+    skyData.data.forEach( entry => {
+      weatherData.push(new Weather(entry));
+    });
+    res.send(weatherData);
+  }
+  catch (error) {
+    response.status(500).send('Sorry, cannot help with that!')
+  }
+}
+
+
+
+
+function notFoundHandler(req, res) {
+  res.status(404).send('Sorry, not available.');
+}
 
 app.listen(PORT, () => {
   console.log(`listening on ${PORT}`);
