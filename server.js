@@ -61,20 +61,21 @@ function Weather (entry) {
 
 function handleWeather(req, res) {
   try {
-    const skyData = require('./data/weather.json');
-    const weatherData = [];
-    skyData.data.maps( entry => {
-      weatherData.push(new Weather(entry));
-    });
-    res.send(weatherData);
+    const city = req.query.search_query;
+    let key = process.env.WEATHER_API_KEY;
+    const url = `https://api.weatherbit.io/v2.0/forecast/daily?city=${city}&key=${key}&days=8`;
+    superagent.get(url)
+      .then(value => {
+        let weatherData = value.body.data.map(entry => {
+          return new Weather(entry);
+        })
+        res.status(200).send(weatherData);
+      })
   }
   catch (error) {
     response.status(500).send('Sorry, cannot help with that!')
   }
 }
-
-
-
 
 function notFoundHandler(req, res) {
   res.status(404).send('Sorry, not available.');
