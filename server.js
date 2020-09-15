@@ -54,7 +54,7 @@ function handleWeather(req, res) {
   try {
     const skyData = require('./data/weather.json');
     const weatherData = [];
-    skyData.data.forEach( entry => {
+    skyData.data.maps( entry => {
       weatherData.push(new Weather(entry));
     });
     res.send(weatherData);
