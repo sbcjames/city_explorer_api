@@ -46,13 +46,13 @@ function handleLocation(req, res) {
 
 // generate construction function for helper functions - weather
 function Weather (entry) {
-  this.description = entry.data.description;
-  this.datetime = entry.data.datetime
+  this.forecast = entry.weather.description;
+  this.time = entry.datetime;
 }
 
 function handleWeather(req, res) {
   try {
-    const skyData = require('./weather.json');
+    const skyData = require('./data/weather.json');
     const weatherData = [];
     skyData.data.forEach( entry => {
       weatherData.push(new Weather(entry));
