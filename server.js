@@ -7,6 +7,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { response } = require('express');
+const superagent = require('superagent');
 
 // applicaiton setup
 const PORT = process.env.PORT;
@@ -21,25 +22,33 @@ app.get('/', (req, res) => {
 // create API route
 app.get('/location', handleLocation);
 app.get('/weather', handleWeather);
+// app.get('/hiking', handleHiking);
 app.use('*', notFoundHandler);
+
 
 // generate construction function for helper functions - location
 function Location (city, geoData) {
   this.search_query = city;
-  this.formatted_query = geoData[0].display_name;
-  this.latitude = geoData[0].lat;
-  this.longitude = geoData[0].lon;
+  this.formatted_query = geoData.display_name;
+  this.latitude = geoData.lat;
+  this.longitude = geoData.lon;
 }
 
 // create helper funcitons & include error messgage
 function handleLocation(req, res) {
   try {
-    const geoData = require('./data/locations.json');
-    const city = req.query.city;
-    const locationData = new Location(city, geoData);
-    res.send(locationData);
+    let city = req.query.city;
+    let key = process.env.GEOCODE_API_KEY;
+    const url = `https://us1.locationiq.com/v1/search.php?key=${key}&q=${city}&format=json&limit=1`;
+
+    superagent.get(url)
+      .then(data => {
+        const geoData = data.body[0];
+        const location = new Location(city, geoData);
+        res.status(200).send(location);
+      })
   }
-  catch (error) {
+  catch(error) {
     res.status(500).send(`Sorry, I'm broke.`);
   }
 }
