@@ -20,9 +20,10 @@ app.get('/', (req, res) => {
 });
 
 // create API route
+app.get('/trails', handleHiking);
 app.get('/location', handleLocation);
 app.get('/weather', handleWeather);
-// app.get('/hiking', handleHiking);
+
 app.use('*', notFoundHandler);
 
 
@@ -74,6 +75,44 @@ function handleWeather(req, res) {
   }
   catch (error) {
     response.status(500).send('Sorry, cannot help with that!')
+  }
+}
+
+//trails section
+function OutDoors (trails) {
+  this.name = trails.name;
+  this.location = trails.location;
+  this.length = trails.length;
+  this.stars = trails.stars;
+  this.starVotes = trails.starVotes;
+  this.summary = trails.summary;
+  this.trail_url = trails.url;
+  this.conditions = trails.conditionDetails;
+  this.condition_date = trails.conditionDate.slice(0,9);
+  this.condition_time = trails.conditionDate.slice(11,19);
+}
+
+function handleHiking(req, res) {
+  console.log('im here')
+  try {
+    const lat = req.query.latitude;
+    const lon = req.query.longitude;
+    console.log(lat)
+    console.log(lon)
+    let key = process.env.TRAIL_API_KEY;
+    const url = `https://www.hikingproject.com/data/get-trails?lat=${lat}&lon=${lon}&maxDistance=10&key=${key}`;
+    superagent.get(url)
+      .then(hike => {
+        const hikingData = hike.body.trails;
+        const hikeArray = [];
+        hikingData.forEach(trails => {
+          hikeArray.push(new OutDoors(trails));
+        })
+        res.status(200).send(hikeArray);
+      }).catch(err => console.log('error', err))
+  }
+  catch (error) {
+    response.status(500).send('Sorry, having issues with that.');
   }
 }
 
