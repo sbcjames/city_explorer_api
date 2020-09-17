@@ -8,11 +8,15 @@ const express = require('express');
 const cors = require('cors');
 const { response } = require('express');
 const superagent = require('superagent');
+const pg = require('pg');
 
 // applicaiton setup
 const PORT = process.env.PORT;
 const app = express();
 app.use(cors());
+
+// Initialize Postgres
+const client = new pg.Client(process.env.DATABASE_URL);
 
 // proof of life
 app.get('/', (req, res) => {
@@ -120,6 +124,16 @@ function notFoundHandler(req, res) {
   res.status(404).send('Sorry, not available.');
 }
 
-app.listen(PORT, () => {
-  console.log(`listening on ${PORT}`);
-});
+function startServer() {
+  app.listen(PORT, () => {
+    console.log('Server is listening on port', PORT);
+  });
+}
+
+client.connect()
+  .then(startServer)
+  .catch(err => console.log(err))
+
+// app.listen(PORT, () => {
+//   console.log(`listening on ${PORT}`);
+// });
