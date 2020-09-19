@@ -73,79 +73,72 @@ function Location(city, geoData) {
   this.longitude = geoData.lon;
 }
 
-function handleWeather(req, res){
-  try {
-    let city = req.query.search_query;
-    let key = process.env.WEATHER_API_KEY;
-    const url = `https://api.weatherbit.io/v2.0/forecast/daily?city=${city}&key=${key}&days=8`;
-    superagent.get(url)
-      .then(value => {
-        let weatherData = value.body.data.map(entry => {
-          return new Weather(entry);
-        })
-        res.status(200).send(weatherData);
-      })
-  }
-  catch (error) {
-    console.log(error);
-    res.status(500).send('Unable to process request, please try again.');
-  }
+
+
+function Weather(description, time) {
+  this.forecast = description;
+  this.time = time;
 }
 
-function Weather(entry) {
-  this.forecast = entry.weather.description;
-  this.time = entry.datetime;
+function handleWeather(req, res) {
+  const formatted_query = req.query.formatted_query;
+  const lat = req.query.latitude;
+  const lon = req.query.longitude;
+  
+  let key = process.env.WEATHER_API_KEY;
+  const url = `https://api.weatherbit.io/v2.0/forecast/daily?lat=${lat}&lon=${lon}&key=${key}`;
+  const sql = `SELECT * FROM weather WHERE search_query=$1;`;
+  const safeValues = [search_query];
+
+  client.query(sql, safeValues)
+    .then((resultsFromSql) => {
+      const newWeather = resultsFromSql[0];
+      console.log(resultsFromSql)
+
+      if (resultsFromSql.rows.length === 0) {
+        superagent.get(url)
+          .then((results) => {
+            let weatherData = results.body.data;
+            let dataOne = weatherData.slice(0, 8);
+            let timeOfDay = Date.now();
+            const sql = `INSERT INTO weather (search_query, forcast, data_entered) VALUES ($1, $2, $3)`;
+            const safeValues = [search_query, JSON.stringify(dataOne), timeOfDay];
+            
+            client.query(sql, safeValues)
+              .then(() => {
+                res.send(dataOne.map((value) => new Weather(value.weather.description, value.datetime)
+                )
+              );
+          });
+          })
+          .catch((error) => {
+          res.status(500).send('Unable to process request, please try again.');
+          });
+      }
+      else if (resultsFromSql.rowCount > 0 && Data.parse(new Date(Date.now())) - Date.parse(resultsFromSql.rows[0]).data_entered)
+      res.status.(200).send(newWeather);
+      } else {
+      superagent.get(url)
+      .then((results) => {
+        let weatherData = resutls.body.data;
+        let dataOne = weatherData.slice(0, 8);
+        let timeOfDay = Date.now();
+        const sql = `INSERT INTO weather (search_query, forcast, data_entered) VALUES ($1, $2, $3)`;
+        const safeValues = [search_query, JSON.stringify(dataOne), timeOfDay];
+
+        client.query(sql, safeValues)
+        .then(() => {
+          res.send(dataOne.map((value) => new Weather(value.weather.description, value.datetime)
+          )
+        );
+      });
+    })
+    .catch((error) => {
+      res.status(500).send('Unable to process request, please try again.');
+    })
+  }
+);
 }
-
-// function handleWeather(req, res) {
-//     const city = req.query.search_query;
-//     const date = new Date();
-//     // check for data on this city in the database
-//     const sql = `SELECT * FROM weather WHERE search_query=$1;`;
-//     const delSql = `DELETE FROM weatherdata WHERE search_query = $1;`;
-//     const safeValues = [city];
-
-//     client.query(sql, safeValues)
-//     .then (weatherFromSql => {
-//         if (weatherFromSql.rowCount > 0 && Date.parse(today) - Date.parse(weatherFromSql.rows[0].time) < 86400000) {
-//             const cityWeather = weatherFromSql.rows[0];
-//             console.log('weather found in database')
-//             res.status(200).send(cityWeather);
-//         } else {
-//             if (weatherFromSql.rowCount > 0 && Date.parse(today) - Date.parse(weatherFromSql.rows[0].time) >= 86400000) {
-//                 console.log('invalid time, please delete');
-//                 client.query(delSql, safeValues)
-//             }
-//             const url = `https://api.weatherbit.io/v2.0/forecast/daily`;
-//             let queryWeather = {
-//                 key: process.env.WEATHER_API_KEY,
-//                 lat,
-//                 lon
-//             }
-//             superagent.get(url)
-//             .query(queryWeather)
-//             .then (weather => {
-//                 let forecast = weather.body.data;
-//                 let forecastSlice = forecast.slice(0, 8);
-//                 let newWeather = forecastSlice.map(value => new Weather(value.weather.description, value.datetime));
-//                 newWeather.forEach((data) => {
-//                     let sql = 'INSERT INTO weather (search_query, forecast, time_stamp) VALUES ($1, $2, $3);';
-//                     const safeValues = [city, forecast.forecast, forecast.time_stamp];
-//                     console.log(safeValues);
-//                     client.query(sql, safeValues);
-//                 })
-//                 res.status(200).send(forecast);
-//             })
-//             .catch (error =>
-//                 res.status(500).send('Unable to process request, please try again.'));
-//         }
-//     })
-
-// function Weather(description, time) {
-//     this.search_query = city;
-//     this.forecast = description;
-//     this.time_stamp = time;
-// }
 
 // function handleHiking(req, res){
 //     try {
