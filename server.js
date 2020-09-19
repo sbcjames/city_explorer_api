@@ -21,7 +21,7 @@ app.use(cors());
 
 app.get('/location', handleLocation);
 app.get('/weather', handleWeather);
-// app.get('/trails', handleHiking);
+app.get('/trails', handleHiking);
 app.use('*', notFoundHandler);
 
 function handleLocation(req, res) {
@@ -84,11 +84,11 @@ function handleWeather(req, res) {
   const formatted_query = req.query.formatted_query;
   const lat = req.query.latitude;
   const lon = req.query.longitude;
-  
+
   let key = process.env.WEATHER_API_KEY;
   const url = `https://api.weatherbit.io/v2.0/forecast/daily?lat=${lat}&lon=${lon}&key=${key}`;
-  const sql = `SELECT * FROM weather WHERE search_query=$1;`;
-  const safeValues = [search_query];
+  const sql = `SELECT * FROM weather WHERE formatted_query=$1;`;
+  const safeValues = [formatted_query];
 
   client.query(sql, safeValues)
     .then((resultsFromSql) => {
@@ -101,81 +101,81 @@ function handleWeather(req, res) {
             let weatherData = results.body.data;
             let dataOne = weatherData.slice(0, 8);
             let timeOfDay = Date.now();
-            const sql = `INSERT INTO weather (search_query, forcast, data_entered) VALUES ($1, $2, $3)`;
-            const safeValues = [search_query, JSON.stringify(dataOne), timeOfDay];
-            
+            const sql = `INSERT INTO weather (formatted_query, forecast, date_entered) VALUES ($1, $2, $3)`;
+            const safeValues = [formatted_query, JSON.stringify(dataOne), timeOfDay];
+
             client.query(sql, safeValues)
               .then(() => {
                 res.send(dataOne.map((value) => new Weather(value.weather.description, value.datetime)
                 )
-              );
-          });
+                );
+              });
           })
           .catch((error) => {
-          res.status(500).send('Unable to process request, please try again.');
+            res.status(500).send('Unable to process request, please try again.');
           });
       }
-      else if (resultsFromSql.rowCount > 0 && Data.parse(new Date(Date.now())) - Date.parse(resultsFromSql.rows[0]).data_entered)
-      res.status.(200).send(newWeather);
+      else if (resultsFromSql.rowCount > 0 && Date.parse(new Date(Date.now()) - Date.parse(resultsFromSql.rows[0]).date_entered) < 864000) {
+        res.status(200).send(newWeather);
       } else {
-      superagent.get(url)
-      .then((results) => {
-        let weatherData = resutls.body.data;
-        let dataOne = weatherData.slice(0, 8);
-        let timeOfDay = Date.now();
-        const sql = `INSERT INTO weather (search_query, forcast, data_entered) VALUES ($1, $2, $3)`;
-        const safeValues = [search_query, JSON.stringify(dataOne), timeOfDay];
+        superagent.get(url)
+          .then((results) => {
+            let weatherData = results.body.data;
+            let dataOne = weatherData.slice(0, 8);
+            let timeOfDay = Date.now();
+            const sql = `INSERT INTO weather (formatted_query, forecast, date_entered) VALUES ($1, $2, $3)`;
+            const safeValues = [formatted_query, JSON.stringify(dataOne), timeOfDay];
 
-        client.query(sql, safeValues)
-        .then(() => {
-          res.send(dataOne.map((value) => new Weather(value.weather.description, value.datetime)
-          )
-        );
-      });
-    })
-    .catch((error) => {
-      res.status(500).send('Unable to process request, please try again.');
-    })
-  }
-);
+            client.query(sql, safeValues)
+              .then(() => {
+                res.send(dataOne.map((value) => new Weather(value.weather.description, value.datetime)
+                )
+                );
+              });
+          })
+          .catch((error) => {
+            res.status(500).send('Unable to process request, please try again.');
+          });
+      }
+    });
 }
 
-// function handleHiking(req, res){
-//     try {
-//         const lat = req.query.latitude;
-//         const lon = req.query.longitude;
-//         let key = process.env.TRAIL_API_KEY;
-//         const url = `https://www.hikingproject.com/data/get-trails?lat=${lat}&lon=${lon}&maxDistance=10&key=${key}`;
-//         superagent.get(url)
-//             .then(hike => {
-//                 // console.log(hike);
-//                 const hikingData = hike.body.trails;
-//                 console.log(hike.body.trails);
-//                 const hikeArray = [];
-//                 hikingData.forEach(active => {
-//                     hikeArray.push(new Hiking(active));
-//                 })
-//                 res.status(200).send(hikeArray);
-//             })
-//             }
-//             catch (error) {
-//                 console.log(error);
-//                 res.status(500).send('Unable to process request, please try again.');
-//             };
-// }
+function handleHiking(req, res){
+  try {
+    const lat = req.query.latitude;
+    const lon = req.query.longitude;
+    let key = process.env.TRAIL_API_KEY;
+    const url = `https://www.hikingproject.com/data/get-trails?lat=${lat}&lon=${lon}&maxDistance=10&key=${key}`;
+    superagent.get(url)
+      .then(hike => {
+        // console.log(hike);
+        const hikingData = hike.body.trails;
+        console.log(hike.body.trails);
+        const hikeArray = [];
+        hikingData.forEach(active => {
+          hikeArray.push(new Hiking(active));
+        })
+        res.status(200).send(hikeArray);
+      })
+  }
+  catch (error) {
+    console.log(error);
+    res.status(500).send('Unable to process request, please try again.');
+  }
+}
 
-// function Hiking(active) {
-//     this.name = active.name
-//     this.location = active.location
-//     this.length = active.length
-//     this.stars = active.stars
-//     this.star_votes = active.starVotes
-//     this.summary = active.summary
-//     this.trail_url = active.url
-//     this.conditions = active.conditionDetails
-//     this.condition_date = active.conditionDate.slice(0, 10);
-//     this.condition_time = active.conditionDate.slice(11, 19);
-// }
+function Hiking(active) {
+  this.name = active.name
+  this.location = active.location
+  this.length = active.length
+  this.stars = active.stars
+  this.star_votes = active.starVotes
+  this.summary = active.summary
+  this.trail_url = active.url
+  this.conditions = active.conditionDetails
+  this.condition_date = active.conditionDate.slice(0, 10);
+  this.condition_time = active.conditionDate.slice(11, 19);
+}
 
 function notFoundHandler(req, res) {
   res.status(404).send('Unable to process request, please try again.');
